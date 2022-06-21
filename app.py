@@ -16,9 +16,11 @@ db.create_all()
 
 toolbar = DebugToolbarExtension(app)
 
+SESSION_KEY = 'username'
 
 @app.get("/")
 def homepage_redirect():
+    """ Redirects to register page """
     return redirect("/register")
 
 @app.route("/register", methods=["GET", "POST"])
@@ -30,12 +32,21 @@ def register():
     if form.validate_on_submit():
         username = form.username.data
         password = form.password.data
+        email = form.email.data
+        first_name = form.first_name.data
+        last_name = form.last_name.data
 
-        user = User.register(username, password)
+        user = User.register(
+                        username, 
+                        password, 
+                        email, 
+                        first_name, 
+                        last_name
+                    )
         db.session.add(user)
         db.session.commit()
 
-        session["user_id"] = user.username
+        session[SESSION_KEY] = user.username
 
         # on successful login, redirect to secret page
         return redirect(f"/users/{username}")
@@ -59,7 +70,7 @@ def login():
         user = User.authenticate(username, password)
 
         if user:
-            session["user_id"] = user.username  # keep logged in
+            session[SESSION_KEY] = user.username  # keep logged in
             return redirect(f"/users/{username}")
 
         else:
@@ -69,13 +80,15 @@ def login():
 
 
 @app.get("/users/<username>")
-def display_secret(username):
+def display_user(username):
+    """ If logged in, displayer user page. If not redirects to login page. """
     user = User.query.get_or_404(username)
+    form = CSRFProtectForm()
 
-    if "user_id" not in session:
+    if SESSION_KEY not in session:
         return redirect("/login")
     else:
-        return render_template("user.html", user=user)
+        return render_template("user.html", user=user, form=form)
 
 
 @app.post("/logout")
@@ -85,10 +98,29 @@ def logout():
     form = CSRFProtectForm()
 
     if form.validate_on_submit():
-        # Remove "user_id" if present, but no errors if it wasn't
-        session.pop("user_id", None)
+        # Remove username if present, but no errors if it wasn't
+        session.pop(SESSION_KEY, None)
 
     return redirect("/")
+
+@app.post('/users/<username>/delete')
+def delete_user(username):
+    """ If theres a user with that username, deletes all of its notes,
+        deletes the user, and clears the session. Then redirects to 
+        homepage. 
+        If no user with that username exists, give a 404. """
+    user = User.query.get_or_404(username)
+    notes = user.notes
+
+    for note in notes:
+        db.session.delete(note)
+
+    db.session.delete(user)
+    db.session.commit()
+
+    session.pop(SESSION_KEY, None)
+
+    return redirect('/')
 
 
 

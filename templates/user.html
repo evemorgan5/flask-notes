@@ -11,11 +11,26 @@ User Notes
 
 <h1>Notes</h1>
 
-<ul></ul>
+<!-- Going to add for loop to add in notes-->
+<ul>
+  {% for note in user.notes %}
+  <li>
+    <a href="/notes/{{note.id}}/update">Update Note</a>
+    <a href="/notes/{{note.id}}/delete">Delete Note</a>
+    {{ note.title}}
+  </li>
+  {% endfor %}
+</ul>
 
 
 <form action="/logout" method="POST">
   {{ form.hidden_tag() }}
-<button>Log out</button>
+  <button formaction="/users/{{user.username}}/notes/add" formmethod="POST">
+    Add Note
+  </button>
+  <button formaction="/users/{{user.username}}/delete" formmethod="POST">
+    Delete User
+  </button>
+  <button>Log out</button>
 </form>
 {% endblock %}
